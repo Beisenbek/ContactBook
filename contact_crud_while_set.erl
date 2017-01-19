@@ -1,5 +1,36 @@
 -module(contact_crud_while_set).
 -compile(export_all).
+-define(PAGE_SIZE,3).
+
+%============Begin of util functions==============
+for(0,_) -> 
+   []; 
+   
+for(N,Term) when N > 0 -> 
+   		io:format("~B~n",[N]), 
+   		[Term|for(N-1,Term)]. 
+
+floor(X) when X < 0 ->
+    T = trunc(X),
+    case X - T == 0 of
+        true -> T;
+        false -> T - 1
+    end;
+
+floor(X) -> 
+    trunc(X) .
+
+idiv(A, B) ->
+    floor(A / B).
+
+my_time(S) ->
+    {{Year, Month, Day}, {Hour, Minute, Second}} = calendar:local_time(),
+	lists:flatten(io_lib:format("~s at: ~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",[S,Year,Month,Day,Hour,Minute,Second])).
+
+clear()->
+	io:fwrite("\e[H\e[J").
+%=============End of util functions==============
+
 
 start()->
 	TABLE = ets:new(phones, [ordered_set, public]),
@@ -21,8 +52,7 @@ menu(TABLE)->
 					  true   		-> menu(TABLE)
 	end.
 
-clear()->
-	io:fwrite("\e[H\e[J").
+
 
 help() ->
 	clear(),
@@ -30,21 +60,29 @@ help() ->
 
 create(TABLE) ->
 	clear(),
-	{ok, [Name]} = io:fread("please, enter new contact name: ", "~s"),
-	{ok, [Phone]} = io:fread("please, enter new contact phone: ", "~s"),
-	ets:insert(TABLE, {Name,Phone}),
+	%{ok, [Name]} = io:fread("please, enter new contact name: ", "~s"),
+	%{ok, [Phone]} = io:fread("please, enter new contact phone: ", "~s"),
+	%ets:insert(TABLE, {Name,Phone,my_time("created")}),
+	ets:insert(TABLE, {"1","2",my_time("created")}),
+	ets:insert(TABLE, {"2","2",my_time("created")}),
+	ets:insert(TABLE, {"3","2",my_time("created")}),
+	ets:insert(TABLE, {"4","2",my_time("created")}),
+	ets:insert(TABLE, {"5","2",my_time("created")}),
+	ets:insert(TABLE, {"6","2",my_time("created")}),
+	ets:insert(TABLE, {"7","2",my_time("created")}),
+	ets:insert(TABLE, {"8","2",my_time("created")}),
 	io:fwrite("done.\n").
 
 update(TABLE) ->
 	clear(),
 	{ok, [Name]} = io:fread("please, enter contact name for phone update: ", "~s"),
 
-	L = lists:flatlength(ets:lookup(TABLE, Name)),
+	Length = lists:flatlength(ets:lookup(TABLE, Name)),
 
 	if 
-		L > 0 	-> 
+		Length > 0 	-> 
 						{ok, [Phone]} = io:fread("please, enter new phone: ", "~s"),
-						ets:insert(TABLE, {Name,Phone});
+						ets:insert(TABLE, {Name,Phone,my_time("updated")});
 
 		true 	-> 
 						io:fwrite("not found!.\n")	
@@ -73,8 +111,33 @@ get_all_asc(TABLE)->
 search(TABLE)->
 	clear(),
 	{ok, [Name]} = io:fread("please, enter contact name for search: ", "~s"),
-	io:fwrite("\~-13w => \~p\~n", [ordered_set, ets:lookup(TABLE, Name)]),
+	Length = lists:flatlength(ets:lookup(TABLE, Name)),
+	if Length > 0 ->
+		      io:fwrite("\~-13w => \~p\~n", [ordered_set, ets:lookup(TABLE, Name)]);
+ 	   true -> 
+	          io:fwrite("not found!.\n")
+	end,
 	io:fwrite("done.\n").
 
 get_from_to(TABLE)->
-	io:fwrite("get_from_to\n").
+	{ok, [Direction]} = io:fread("please, enter direction -> or <-: ", "~s"),
+	if Direction =:= "->" ->
+							showNextInfoForKey(TABLE,ets:first(TABLE),0,Direction);
+	   Direction =:= "<-" ->
+	   						showNextInfoForKey(TABLE,ets:last(TABLE),0,Direction);
+	   				true -> ok
+	 end.
+
+showNextInfoForKey(TABLE,Key,Cnt,Direction)->
+	if 	Key =:= '$end_of_table' -> true;
+		Cnt >= ?PAGE_SIZE -> true;
+						   true -> io:fwrite("~s~n",[Key]),
+						   		 if Direction =:= "->" ->
+											 showNextInfoForKey(TABLE,ets:next(TABLE,Key),Cnt + 1,Direction);
+	  						    	Direction =:= "<-" ->
+	   										 showNextInfoForKey(TABLE,ets:prev(TABLE,Key),Cnt + 1,Direction);
+	   											 true -> ok
+								 end
+						          
+	end.
+
