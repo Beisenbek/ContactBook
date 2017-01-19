@@ -1,1 +1,4 @@
 *.beam
+*.sublime-project
+*.sublime-workspace
+*.dump
