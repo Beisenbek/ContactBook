@@ -36,11 +36,25 @@ create(TABLE) ->
 	io:fwrite("done.\n").
 
 update(TABLE) ->
-	io:fwrite("update\n").
+	clear(),
+	{ok, [Name]} = io:fread("please, enter contact name for phone update: ", "~s"),
+
+	L = lists:flatlength(ets:lookup(TABLE, Name)),
+
+	if 
+		L > 0 	-> 
+						{ok, [Phone]} = io:fread("please, enter new phone: ", "~s"),
+						ets:insert(TABLE, {Name,Phone});
+
+		true 	-> 
+						io:fwrite("not found!.\n")	
+	end,
+
+	io:fwrite("done.\n").
 
 delete(TABLE) ->
 	clear(),
-	{ok, [Name]} = io:fread("please, enter contact name for delete: ", "~s"),
+	{ok, [Name]} = io:fread("please, enter contact name for deleting: ", "~s"),
 	ets:delete(TABLE, Name),
 	io:fwrite("done.\n").
 
