@@ -10,13 +10,12 @@ menu(TABLE)->
 {ok, [Operation]} = io:fread("please, enter command number [or -h for help] : ", "~s"),
 	
 	if  Operation =:= "1"			-> create(TABLE),menu(TABLE);
-		Operation =:= "2"			-> read(),menu(TABLE);
-		Operation =:= "3"			-> update(),menu(TABLE);
-		Operation =:= "4"			-> delete(),menu(TABLE);
-		Operation =:= "5"			-> get_all_asc(TABLE),menu(TABLE);
-		Operation =:= "6"			-> get_all_desc(TABLE),menu(TABLE);
-		Operation =:= "7"   		-> search(),menu(TABLE);
-		Operation =:= "8"   		-> get_from_to(),menu(TABLE);
+		Operation =:= "2"			-> update(TABLE),menu(TABLE);
+		Operation =:= "3"			-> delete(TABLE),menu(TABLE);
+		Operation =:= "4"			-> get_all_asc(TABLE),menu(TABLE);
+		Operation =:= "5"			-> get_all_desc(TABLE),menu(TABLE);
+		Operation =:= "6"   		-> search(TABLE),menu(TABLE);
+		Operation =:= "7"   		-> get_from_to(TABLE),menu(TABLE);
 		Operation =:= "-h"   		-> help(),menu(TABLE);
 		Operation =:= "0"   		-> clear(),io:fwrite("bye!\n");
 					  true   		-> menu(TABLE)
@@ -27,7 +26,7 @@ clear()->
 
 help() ->
 	clear(),
-	io:fwrite("1 create\n2 read\n3 update\n4 delete\n5 get_all_asc\n6 get_all_desc\n7 search\n8 get_from_to\n0 exit\n").
+	io:fwrite("1 create\n2 update\n3 delete\n4 get_all_asc\n5 get_all_desc\n6 search\n7 get_from_to\n0 exit\n").
 
 create(TABLE) ->
 	clear(),
@@ -36,14 +35,14 @@ create(TABLE) ->
 	ets:insert(TABLE, {Name,Phone}),
 	io:fwrite("done.\n").
 
-read() ->
-	io:fwrite("read\n").
-
-update() ->
+update(TABLE) ->
 	io:fwrite("update\n").
 
-delete() ->
-	io:fwrite("delete\n").
+delete(TABLE) ->
+	clear(),
+	{ok, [Name]} = io:fread("please, enter contact name for delete: ", "~s"),
+	ets:delete(TABLE, Name),
+	io:fwrite("done.\n").
 
 get_all_desc(TABLE)->
 	clear(),
@@ -57,8 +56,11 @@ get_all_asc(TABLE)->
 	io:fwrite("\~-13w => \~p\~n", [ordered_set, List]),
 	io:fwrite("done.\n").
 
-search(Name)->
-	io:fwrite("get_with_name\n").
+search(TABLE)->
+	clear(),
+	{ok, [Name]} = io:fread("please, enter contact name for search: ", "~s"),
+	io:fwrite("\~-13w => \~p\~n", [ordered_set, ets:lookup(TABLE, Name)]),
+	io:fwrite("done.\n").
 
-get_from_to()->
+get_from_to(TABLE)->
 	io:fwrite("get_from_to\n").
