@@ -42,8 +42,7 @@ start()->
 
 update_pagination(PAGINATION,TABLE)->
 	ets:delete_all_objects(PAGINATION),
-	generate_pagination(PAGINATION,TABLE,1,ets:first(TABLE),0),
-	showInfoForPage(PAGINATION,TABLE,1).
+	generate_pagination(PAGINATION,TABLE,1,ets:first(TABLE),0).
 
 generate_pagination(PAGINATION,TABLE,PAGE,KEY,Cnt)->
 	if 	KEY =:= '$end_of_table' -> true;
@@ -66,6 +65,7 @@ showInfoForPage(PAGINATION,TABLE,PAGE)->
               end, List),
 	io:fwrite("done.\n").
 
+
 showNextInfoForKey(TABLE,Key,Cnt,Direction)->
 	if 	Key =:= '$end_of_table' -> true;
 		Cnt >= ?PAGE_SIZE -> true;
@@ -80,7 +80,7 @@ showNextInfoForKey(TABLE,Key,Cnt,Direction)->
 	end.
 
 menu(PAGINATION,TABLE)->
-{ok, [Operation]} = io:fread("please, enter command number [or -h for help] : ", "~s"),
+	{ok, [Operation]} = io:fread("please, enter command number [or -h for help] : ", "~s"),
 	
 	if  Operation =:= "1"			-> create(PAGINATION, TABLE),menu(PAGINATION,TABLE);
 		Operation =:= "2"			-> update(TABLE),menu(PAGINATION,TABLE);
@@ -94,10 +94,34 @@ menu(PAGINATION,TABLE)->
 					  true   		-> menu(PAGINATION,TABLE)
 	end.
 
+navigation(PAGINATION,TABLE,PAGE,MAXL) ->
+
+	showInfoForPage(PAGINATION,TABLE,PAGE),
+	io:fwrite("~n~n######## page ~B from ~B~n##########",[PAGE,MAXL]),
+	
+	{ok, [Option]} = io:fread("please, enter prev, next or exit for navigation: ", "~s"),
+
+	if  Option =:= "next" -> 
+			if PAGE < MAXL -> navigation(PAGINATION,TABLE,PAGE + 1, MAXL);
+					   true -> navigation(PAGINATION,TABLE,1, MAXL)
+			end;
+		
+		Option =:= "prev" -> 
+			if PAGE >  1  -> navigation(PAGINATION,TABLE,PAGE - 1, MAXL);
+					   true -> navigation(PAGINATION,TABLE,MAXL, MAXL)
+			end;
+
+		Option =:= "exit" -> ok;
+		
+		true -> navigation(PAGINATION,TABLE,PAGE,MAXL)
+	end.
+
 
 pagination(PAGINATION,TABLE) ->
-	List = lists:sort(ets:tab2list(PAGINATION)),
-	io:fwrite("\~-13w => \~p\~n", [bag, List]),
+	PAGE = 1,
+	Length = lists:flatlength(ets:tab2list(TABLE)),
+	MAXL = idiv(Length,?PAGE_SIZE) + 1,
+	navigation(PAGINATION,TABLE,PAGE,MAXL),
 	io:fwrite("done.\n").
 
 help() ->
