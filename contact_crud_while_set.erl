@@ -1,6 +1,8 @@
 -module(contact_crud_while_set).
 -compile(export_all).
 -define(PAGE_SIZE,3).
+-record(contact, {name,phone,timestamp}).
+
 
 %============Begin of util functions==============
 for(0,_) -> 
@@ -34,36 +36,80 @@ clear()->
 
 start()->
 	TABLE = ets:new(phones, [ordered_set, public]),
-	menu(TABLE).
+	PAGINATION = ets:new(pagination, [bag, public]), 
+	menu(PAGINATION,TABLE).
 
 
-menu(TABLE)->
+update_pagination(PAGINATION,TABLE)->
+	ets:delete_all_objects(PAGINATION),
+	generate_pagination(PAGINATION,TABLE,1,ets:first(TABLE),0),
+	showInfoForPage(PAGINATION,TABLE,1).
+
+generate_pagination(PAGINATION,TABLE,PAGE,KEY,Cnt)->
+	if 	KEY =:= '$end_of_table' -> true;
+						   true -> 
+						   		 if  Cnt >= ?PAGE_SIZE  -> generate_pagination(PAGINATION,TABLE,PAGE + 1, KEY,0);
+	  						    	               true -> 
+															ets:insert(PAGINATION, {PAGE,KEY}),
+	  						    	               			generate_pagination(PAGINATION,TABLE,PAGE, ets:next(TABLE,KEY),Cnt + 1)
+								 end
+						          
+	end.
+
+showInfoForPage(PAGINATION,TABLE,PAGE)->
+	clear(),
+	List = ets:lookup(PAGINATION, PAGE),
+	lists:foreach(fun(N) ->
+					  {Page, Key} = N,
+					  List2 = ets:lookup(TABLE,Key),
+                      io:format("Item:~p~n",List2)
+              end, List),
+	io:fwrite("done.\n").
+
+showNextInfoForKey(TABLE,Key,Cnt,Direction)->
+	if 	Key =:= '$end_of_table' -> true;
+		Cnt >= ?PAGE_SIZE -> true;
+						   true -> io:fwrite("~s~n",[Key]),
+						   		 if Direction =:= "->" ->
+											 showNextInfoForKey(TABLE,ets:next(TABLE,Key),Cnt + 1,Direction);
+	  						    	Direction =:= "<-" ->
+	   										 showNextInfoForKey(TABLE,ets:prev(TABLE,Key),Cnt + 1,Direction);
+	   											 true -> ok
+								 end
+						          
+	end.
+
+menu(PAGINATION,TABLE)->
 {ok, [Operation]} = io:fread("please, enter command number [or -h for help] : ", "~s"),
 	
-	if  Operation =:= "1"			-> create(TABLE),menu(TABLE);
-		Operation =:= "2"			-> update(TABLE),menu(TABLE);
-		Operation =:= "3"			-> delete(TABLE),menu(TABLE);
-		Operation =:= "4"			-> get_all_asc(TABLE),menu(TABLE);
-		Operation =:= "5"			-> get_all_desc(TABLE),menu(TABLE);
-		Operation =:= "6"   		-> search(TABLE),menu(TABLE);
-		Operation =:= "7"   		-> get_from_to(TABLE),menu(TABLE);
-		Operation =:= "-h"   		-> help(),menu(TABLE);
+	if  Operation =:= "1"			-> create(PAGINATION, TABLE),menu(PAGINATION,TABLE);
+		Operation =:= "2"			-> update(TABLE),menu(PAGINATION,TABLE);
+		Operation =:= "3"			-> delete(PAGINATION,TABLE),menu(PAGINATION,TABLE);
+		Operation =:= "4"			-> get_all_asc(TABLE),menu(PAGINATION,TABLE);
+		Operation =:= "5"			-> get_all_desc(TABLE),menu(PAGINATION,TABLE);
+		Operation =:= "6"   		-> search(TABLE),menu(PAGINATION,TABLE);
+		Operation =:= "7"   		-> pagination(PAGINATION,TABLE),menu(PAGINATION,TABLE);
+		Operation =:= "-h"   		-> help(),menu(PAGINATION,TABLE);
 		Operation =:= "0"   		-> clear(),io:fwrite("bye!\n");
-					  true   		-> menu(TABLE)
+					  true   		-> menu(PAGINATION,TABLE)
 	end.
 
 
+pagination(PAGINATION,TABLE) ->
+	List = lists:sort(ets:tab2list(PAGINATION)),
+	io:fwrite("\~-13w => \~p\~n", [bag, List]),
+	io:fwrite("done.\n").
 
 help() ->
 	clear(),
 	io:fwrite("1 create\n2 update\n3 delete\n4 get_all_asc\n5 get_all_desc\n6 search\n7 get_from_to\n0 exit\n").
 
-create(TABLE) ->
+create(PAGINATION,TABLE) ->
 	clear(),
 	%{ok, [Name]} = io:fread("please, enter new contact name: ", "~s"),
 	%{ok, [Phone]} = io:fread("please, enter new contact phone: ", "~s"),
 	%ets:insert(TABLE, {Name,Phone,my_time("created")}),
-	ets:insert(TABLE, {"1","2",my_time("created")}),
+	ets:insert(TABLE, {"1","2124",my_time("created")}),
 	ets:insert(TABLE, {"2","2",my_time("created")}),
 	ets:insert(TABLE, {"3","2",my_time("created")}),
 	ets:insert(TABLE, {"4","2",my_time("created")}),
@@ -71,6 +117,7 @@ create(TABLE) ->
 	ets:insert(TABLE, {"6","2",my_time("created")}),
 	ets:insert(TABLE, {"7","2",my_time("created")}),
 	ets:insert(TABLE, {"8","2",my_time("created")}),
+	update_pagination(PAGINATION,TABLE),
 	io:fwrite("done.\n").
 
 update(TABLE) ->
@@ -90,10 +137,11 @@ update(TABLE) ->
 
 	io:fwrite("done.\n").
 
-delete(TABLE) ->
+delete(PAGINATION,TABLE) ->
 	clear(),
 	{ok, [Name]} = io:fread("please, enter contact name for deleting: ", "~s"),
 	ets:delete(TABLE, Name),
+	update_pagination(PAGINATION,TABLE),
 	io:fwrite("done.\n").
 
 get_all_desc(TABLE)->
@@ -118,26 +166,3 @@ search(TABLE)->
 	          io:fwrite("not found!.\n")
 	end,
 	io:fwrite("done.\n").
-
-get_from_to(TABLE)->
-	{ok, [Direction]} = io:fread("please, enter direction -> or <-: ", "~s"),
-	if Direction =:= "->" ->
-							showNextInfoForKey(TABLE,ets:first(TABLE),0,Direction);
-	   Direction =:= "<-" ->
-	   						showNextInfoForKey(TABLE,ets:last(TABLE),0,Direction);
-	   				true -> ok
-	 end.
-
-showNextInfoForKey(TABLE,Key,Cnt,Direction)->
-	if 	Key =:= '$end_of_table' -> true;
-		Cnt >= ?PAGE_SIZE -> true;
-						   true -> io:fwrite("~s~n",[Key]),
-						   		 if Direction =:= "->" ->
-											 showNextInfoForKey(TABLE,ets:next(TABLE,Key),Cnt + 1,Direction);
-	  						    	Direction =:= "<-" ->
-	   										 showNextInfoForKey(TABLE,ets:prev(TABLE,Key),Cnt + 1,Direction);
-	   											 true -> ok
-								 end
-						          
-	end.
-
